@@ -11,6 +11,7 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
 let conn, mapReady=false, band='all', dataReady=false;
+const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
   map.addSource('observations',{type:'geojson',data:empty});
@@ -32,6 +33,8 @@ map.on('click','measured',e=>{
   $('#detail-extra').hidden=true;$('#detail-more').setAttribute('aria-expanded','false');$('#detail-more').textContent='Source details ⌄';
   $('#detail-time').textContent=p.measured_at || 'Not recorded';
   $('#detail-radio').textContent=p.radio || 'Not recorded';
+  $('#detail-operator').textContent=p.operator_name ? `Anonymized ${p.operator_name}` : 'Not recorded';
+  $('#detail-network').textContent=p.network_label || 'Not recorded';
   $('#detail-row').textContent=p.source_record_id || 'Not recorded';
   detail.hidden=false;
 });
@@ -48,16 +51,20 @@ for(const chip of chips)chip.addEventListener('click',()=>{
   detail.hidden=true;
   void refresh().catch(showError);
 });
+for(const selector of [operatorFilter,technologyFilter])selector.addEventListener('change',()=>{detail.hidden=true;void refresh().catch(showError)});
 function showError(error){notice.classList.add('error');notice.textContent='Could not read local data. Reload the page or try a modern browser.';console.error(error)}
 async function refresh(){
   if(!conn||!mapReady)return;
   const predicate={all:'TRUE',high:'rsrp_dbm >= -85',mid:'rsrp_dbm >= -105 AND rsrp_dbm < -85',low:'rsrp_dbm < -105'}[band];
-  // band is selected only from this closed set; no external text enters SQL.
-  const result=await conn.query(`SELECT source,source_record_id,knowledge_grade,country_code,radio,lon,lat,rsrp_dbm,measured_at FROM observations WHERE ${predicate} AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 ORDER BY source_record_id LIMIT 2000`);
+  // Every interpolated clause is selected from a closed set, never free-form input.
+  const operator={all:'TRUE',A:"operator_name = 'A'",B:"operator_name = 'B'",C:"operator_name = 'C'"}[operatorFilter.value];
+  const technology={all:'TRUE',nr:"radio = 'NR SS-RSRP (5G signal)'",lte:"radio = 'LTE RSRP (4G signal)'"}[technologyFilter.value];
+  const result=await conn.query(`SELECT source,source_record_id,knowledge_grade,country_code,radio,operator_name,network_label,lon,lat,rsrp_dbm,measured_at FROM observations WHERE ${predicate} AND ${operator} AND ${technology} AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 ORDER BY source_record_id LIMIT 2000`);
   const rows=result.toArray().map(row=>row.toJSON());
-  const features=rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,source_record_id:r.source_record_id,knowledge_grade:r.knowledge_grade,country_code:r.country_code,radio:r.radio,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at?String(r.measured_at):''}}));
+  const features=rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,source_record_id:r.source_record_id,knowledge_grade:r.knowledge_grade,country_code:r.country_code,radio:r.radio,operator_name:r.operator_name,network_label:r.network_label,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at?String(r.measured_at):''}}));
   map.getSource('observations').setData({type:'FeatureCollection',features});
-  count.textContent=rows.length?`${rows.length.toLocaleString()} points shown · max 2,000`:'No points in this band';
+  const label=[operatorFilter.value==='all'?'all operator codes':`code ${operatorFilter.value}`,technologyFilter.value==='all'?'all signal types':technologyFilter.value==='nr'?'NR / 5G':'LTE / 4G'].join(' · ');
+  count.textContent=rows.length?`${rows.length.toLocaleString()} points shown · ${label}${rows.length===2000?' · capped at 2,000':''}`:`No points · ${label}`;
 }
 async function boot(){
   const bundle=await duckdb.selectBundle(duckdb.getJsDelivrBundles());

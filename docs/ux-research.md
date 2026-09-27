@@ -15,3 +15,7 @@ The interface uses a restrained typographic hierarchy, whitespace, one primary a
 ## Product-owner usability correction
 
 A user test found the first redesign still required scrolling to reach the map and reading too much to interpret a point. The current iteration puts the map immediately after a compact one-line orientation, within the first viewport on desktop and mobile. The static on-map RSRP legend explains the three color bins before any tap; tap gives one large measured dBm value, then a voluntary Source details disclosure. The bins are display categories only, never an RF-quality or coverage score. This correction supersedes the earlier large-hero layout.
+
+## Anonymized operator and signal-type views
+
+DoNext H-Bahn exposes anonymized MNO codes A/B/C, not named German carriers or an MNC. Its sample is highly uneven: C=10,072, A=74, B=2. A per-code map view is possible, but cross-code comparisons are not a ranking or nationally representative. The source has `ss_rsrp` and `rsrp`, which support separate NR/5G-signal and LTE/4G-signal map views; this is based on the measured field, not a comprehensive device/RAT classification. Explicit `network` labels are rare and preserved separately in point detail. The v1 controls combine an RSRP bin, anonymized MNO code and signal type on the same map; no carrier name is guessed.
