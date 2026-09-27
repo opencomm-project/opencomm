@@ -28,3 +28,5 @@
 
 #sector-credit[hidden],#sector-legend[hidden]{display:none}#sector-legend{background:#fff2f1f0;max-width:255px}#sector-legend a{pointer-events:auto}#sector-credit{font-size:10px;color:var(--soft)}
 @media(max-width:650px){.map-footer #sector-credit[hidden]{display:none}.map-footer #sector-credit{display:block}.view-switch .view-button{flex:none}}
+
+#close-controls{display:none}@media(max-width:650px){#close-controls{display:block;position:sticky;top:0;margin:7px 9px 0 auto;border:0;border-radius:20px;background:#172530;color:white;padding:7px 12px;font:600 12px system-ui;z-index:2;cursor:pointer}.map-controls .area-switch{padding-top:5px}}

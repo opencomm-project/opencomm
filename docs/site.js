@@ -125,6 +125,7 @@ function toggleControls(force){
   map.resize();
 }
 $('#map-layer-toggle').addEventListener('click',()=>toggleControls());
+$('#close-controls').addEventListener('click',()=>toggleControls(false));
 $('#area-germany').addEventListener('click',()=>{setRegion('germany');toggleControls(false)});
 $('#area-israel').addEventListener('click',()=>{setRegion('israel');toggleControls(false)});
 for(const id of ['israel-radio','israel-network'])$('#'+id).addEventListener('change',()=>{$('#israel-detail').hidden=true;refreshIsrael()});
