@@ -3,13 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Open cellular observations, labeled by evidence grade. A data-empty public prototype.">
-  <title>opencomm | evidence-first cellular observations</title>
+  <meta name="description" content="Real German 4G/5G signal measurements from TU Dortmund, labeled by evidence grade and source; not a coverage map.">
+  <title>Measured RF map and cellular-data provenance | opencomm</title>
+  <link rel="canonical" href="https://opencomm-project.github.io/opencomm/">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="keywords" content="opencomm, measured RF, RSRP, cellular data, TU Dortmund DoNext, OpenCellID, CellMapper, nPerf, Opensignal, Ookla Speedtest, Mozilla Location Service, Unwired Labs, Ofcom, Bundesnetzagentur, Israel cellular antennas, Pelephone, Cellcom, Partner, HOT Mobile">
+  <meta property="og:type" content="website"><meta property="og:title" content="opencomm: measured RF with provenance"><meta property="og:description" content="Explore real sampled Dortmund signal measurements with a clear evidence grade. Not a coverage map."><meta property="og:url" content="https://opencomm-project.github.io/opencomm/">
+  <meta name="twitter:card" content="summary">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="./site.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dataset","name":"opencomm DoNext H-Bahn measured RF demo extract","description":"10,148 sampled real RSRP readings from one Dortmund H-Bahn route. Not comprehensive cellular coverage.","url":"https://opencomm-project.github.io/opencomm/","license":"https://creativecommons.org/licenses/by/4.0/","isBasedOn":"https://doi.org/10.17877/TUDODATA-2026-T6MYPO","creator":{"@type":"Organization","name":"opencomm"},"distribution":{"@type":"DataDownload","encodingFormat":"application/vnd.apache.parquet","contentUrl":"https://opencomm-project.github.io/opencomm/assets/observations.parquet"},"spatialCoverage":{"@type":"Place","name":"Dortmund H-Bahn, Germany"}}</script>
 </head>
 <body>
-  <header class="topbar"><div class="brand"><span class="logo">o<span>·</span></span><span>opencomm</span></div><div class="branch">PUBLIC PROTOTYPE <span class="divider">/</span> STATIC EXPERIMENT</div><a class="repo" href="https://github.com/opencomm-project/opencomm/tree/pages-static">Source ↗</a></header>
+  <header class="topbar"><div class="brand"><span class="logo">o<span>·</span></span><span>opencomm</span></div><div class="branch">PUBLIC PROTOTYPE <span class="divider">/</span> STATIC EXPERIMENT</div><nav class="toplinks"><a href="./methodology.html">Method</a><a href="./alternatives.html">Other maps</a><a href="https://github.com/opencomm-project/opencomm/tree/pages-static">Source ↗</a></nav></header>
   <main>
     <section class="intro"><div class="eyebrow">CELLULAR DATA, WITH PROVENANCE</div><h1>Know what the data<br><em>actually says.</em></h1><p>Explore open cellular observations by evidence grade. An estimated cell location is not a signal measurement, and neither is a coverage guarantee.</p></section>
     <section class="workspace" aria-label="Observations explorer">
@@ -21,13 +27,13 @@
         <label for="grade">EVIDENCE GRADE</label><select id="grade"><option value="all">All grades</option><option value="inferred_inventory">Inferred inventory</option><option value="measured_rf">Measured RF</option></select>
         <label for="country">COUNTRY</label><select id="country"><option value="all">All countries</option><option value="IL">Israel · IL</option><option value="GB">United Kingdom · GB</option><option value="DE">Germany · DE</option></select>
         <div class="rule"></div><div class="grade"><span class="badge inventory"></span><div><b>Inferred inventory</b><small>Estimated cell coordinates. No measured signal.</small></div></div><div class="grade"><span class="badge measured"></span><div><b>Measured RF</b><small>Signal or performance recorded at a place and time.</small></div></div>
-        <div class="sidebar-footer">Queries run in your browser with DuckDB-Wasm. No account, uploads or live API.</div>
+        <div class="sidebar-footer">Source: <a href="https://doi.org/10.17877/TUDODATA-2026-T6MYPO">DoNext (Schippers, Geis, Böcker &amp; Wietfeld)</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. H-Bahn sample: every 47th source row meeting geo/RF checks, no imputation. Queries run in your browser with DuckDB-Wasm.</div>
       </aside>
       <div class="map-wrap"><div id="map" aria-label="Map of observations"></div><div class="map-label">MAP <span>·</span> OPEN OBSERVATIONS</div><div class="map-count" id="map-count">No observations in this view</div></div>
     </section>
-    <section class="footnotes"><div><span class="step">02 / DATA STATUS</span><h2>Empty on purpose.</h2><p>No real OpenCellID export or measured RF dataset has been loaded yet. We do not display synthetic test points as real observations. The Parquet file has a typed schema and zero rows; importing licensed data is a separate, future step.</p></div><div><span class="step">03 / INTERPRETATION</span><h2>Keep the grades apart.</h2><p>Israel's planned OpenCellID inventory belongs to the <b>inferred</b> grade. UK Ofcom and German research measurements are separate potential <b>measured</b> sources, not Israeli coverage. Even measured points are samples, not a complete network map.</p></div></section>
+    <section class="footnotes"><div><span class="step">02 / DATA STATUS</span><h2>Real data, narrow scope.</h2><p>10,148 sampled rows from TU Dortmund DoNext H-Bahn cell measurements now power the map. This is one rail route around Dortmund, not German coverage. UK Ofcom and Israeli OpenCellID are not yet loaded. Synthetic test points are never shown.</p></div><div><span class="step">03 / INTERPRETATION</span><h2>Keep the grades apart.</h2><p>Israel's planned OpenCellID inventory belongs to the <b>inferred</b> grade. UK Ofcom and German research measurements are separate potential <b>measured</b> sources, not Israeli coverage. Even measured points are samples, not a complete network map.</p></div></section>
   </main>
-  <footer>opencomm <span>·</span> clean-room public-data prototype <span>·</span> <a href="https://github.com/opencomm-project/opencomm">Server prototype retained separately</a></footer>
+  <footer><a href="./methodology.html">Data &amp; method</a> <span>·</span> <a href="./alternatives.html">Compare cellular maps and data</a> <span>·</span> opencomm <span>·</span> clean-room public-data prototype <span>·</span> <a href="https://github.com/opencomm-project/opencomm">Server prototype retained separately</a></footer>
   <script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script>
   <script type="module" src="./site.js"></script>
 </body>

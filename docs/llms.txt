@@ -1,0 +1,16 @@
+# opencomm
+
+> opencomm is an independent, clean-room public-data prototype. Its static Pages demo shows a sampled set of real RF measurements along the TU Dortmund H-Bahn route, not whole-network coverage.
+
+- Site: https://opencomm-project.github.io/opencomm/
+- Data and method: https://opencomm-project.github.io/opencomm/methodology.html
+- Cellular mapping alternatives: https://opencomm-project.github.io/opencomm/alternatives.html
+- Open source branch: https://github.com/opencomm-project/opencomm/tree/pages-static
+
+## Facts safe to cite
+
+- The published demo has 10,148 actual measured RSRP points sampled deterministically from DoNext H-Bahn/cell_data.csv around Dortmund, Germany. Dataset: Schippers, Geis, Böcker and Wietfeld (2026), DoNext, TUDOdata V2, DOI https://doi.org/10.17877/TUDODATA-2026-T6MYPO ; license CC BY 4.0.
+- Each point is labeled `measured_rf`. The map is a bounded sample from one route, not a signal coverage prediction, tower location database or complete German network assessment.
+- An `inferred_inventory` grade is reserved for estimated cell positions, such as a future authorized OpenCellID export. No Israel OpenCellID or UK Ofcom observations are currently loaded.
+- DuckDB-Wasm queries a public Parquet file in the visitor's browser. MapLibre provides the map. The static branch has no live FastAPI/PostGIS service.
+- opencomm does not claim affiliation with OpenCellID, CellMapper, nPerf, Opensignal, Ookla/Speedtest, Unwired Labs, Mozilla, Ofcom, TU Dortmund, Israeli operators, or regulators. See the alternatives page for distinctions.

@@ -5,7 +5,7 @@ const total = document.querySelector('#total');
 const count = document.querySelector('#map-count');
 const grade = document.querySelector('#grade');
 const country = document.querySelector('#country');
-const map = new maplibregl.Map({container:'map',style:'https://demotiles.maplibre.org/style.json',center:[23,42],zoom:3});
+const map = new maplibregl.Map({container:'map',style:'https://demotiles.maplibre.org/style.json',center:[7.438,51.493],zoom:11});
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 let conn;
 let mapReady = false;
@@ -24,7 +24,7 @@ map.on('click', ['inventory','measured'], e => {
   const kind=p.knowledge_grade==='measured_rf'?'Measured RF':'Inferred inventory';
   // Text content, not HTML: source labels come from external data.
   const node=document.createElement('div');
-  node.textContent=`${kind} · ${p.source} · ${p.country_code}`;
+  node.textContent=`${kind} · ${p.source} · ${p.country_code} · RSRP ${p.rsrp_dbm} dBm · ${p.measured_at || 'time unavailable'}`;
   new maplibregl.Popup().setLngLat(f.geometry.coordinates).setDOMContent(node).addTo(map);
 });
 const safe = value => value === 'all' ? null : value;
@@ -33,14 +33,14 @@ async function refresh(){
   requested=false;
   const g=safe(grade.value), c=safe(country.value);
   // Values are from closed select menus; SQL parameter binding avoids interpolation.
-  const stmt=await conn.prepare(`SELECT source,knowledge_grade,country_code,lon,lat FROM observations
+  const stmt=await conn.prepare(`SELECT source,knowledge_grade,country_code,lon,lat,rsrp_dbm,measured_at FROM observations
     WHERE (?::VARCHAR IS NULL OR knowledge_grade=?) AND (?::VARCHAR IS NULL OR country_code=?)
     AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 LIMIT 2000`);
   let result;
   try {result=await stmt.query(g,g,c,c)} finally {await stmt.close()}
   const rows=result.toArray().map(row=>row.toJSON());
-  map.getSource('observations').setData({type:'FeatureCollection',features:rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,knowledge_grade:r.knowledge_grade,country_code:r.country_code}}))});
-  count.textContent=rows.length===0?'No observations in this view':`${rows.length} shown (max 2,000)`;
+  map.getSource('observations').setData({type:'FeatureCollection',features:rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,knowledge_grade:r.knowledge_grade,country_code:r.country_code,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at ? String(r.measured_at) : ''}}))});
+  count.textContent=rows.length===0?'No observations in this view':`${rows.length.toLocaleString()} plotted · up to 2,000 per view`;
 }
 for(const input of [grade,country]) input.addEventListener('change',()=>{refresh().catch(showError)});
 function showError(error){notice.classList.add('error');notice.textContent='Local query failed. Reload the page or try a modern browser. No network data was changed.';console.error(error)}
@@ -59,7 +59,7 @@ async function boot(){
   const result=await conn.query('SELECT count(*) AS n FROM observations');
   const n=Number(result.toArray()[0].n);
   total.textContent=n.toLocaleString();
-  notice.textContent=n===0?'No licensed observations loaded yet. The map is intentionally empty.':'Showing licensed observations with explicit evidence grades.';
+  notice.textContent=n===0?'No licensed observations loaded yet. The map is intentionally empty.':'Real TU Dortmund H-Bahn measurements (sampled). Click a point for source, measured RSRP and time. Not coverage.';
   await refresh();
 }
 boot().catch(showError);

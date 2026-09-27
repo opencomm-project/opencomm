@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://opencomm-project.github.io/opencomm/sitemap.xml

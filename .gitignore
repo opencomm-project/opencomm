@@ -17,3 +17,5 @@ data/
 # Explicitly published empty schema file; raw data exports stay ignored.
 *.parquet
 !docs/assets/observations.parquet
+
+# Explicitly published sampled, licensed DoNext dataset; raw source stays ignored.
