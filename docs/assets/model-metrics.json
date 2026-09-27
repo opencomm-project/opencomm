@@ -1,0 +1,43 @@
+{
+  "model": "LightGBM regression on coordinates only",
+  "scope": "anonymized MNO C, NR SS-RSRP, Dortmund H-Bahn",
+  "train_n": 7652,
+  "holdout_n": 1912,
+  "holdout_lon": [
+    7.413205,
+    7.415774
+  ],
+  "holdout_mae_db": 4.04,
+  "cv_folds": [
+    {
+      "fold": 1,
+      "n": 1531,
+      "mae_db": 2.17
+    },
+    {
+      "fold": 2,
+      "n": 1530,
+      "mae_db": 13.67
+    },
+    {
+      "fold": 3,
+      "n": 1530,
+      "mae_db": 8.7
+    },
+    {
+      "fold": 4,
+      "n": 1530,
+      "mae_db": 4.35
+    },
+    {
+      "fold": 5,
+      "n": 1531,
+      "mae_db": 3.61
+    }
+  ],
+  "cv_weighted_mae_db": 6.5,
+  "hex_resolution": 10,
+  "hex_count": 109,
+  "max_route_distance_m": 150,
+  "uncertainty": "Heuristic max(spatial-CV MAE, spread across spatial-fold models) multiplied by 1 + distance/150m. Not calibrated or probabilistic; no off-route ground truth."
+}

@@ -10,7 +10,7 @@ const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
-let conn, mapReady=false, band='all', dataReady=false;
+let conn, mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null;
 const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
@@ -20,9 +20,18 @@ map.on('load',()=>{
     'circle-radius':['interpolate',['linear'],['zoom'],9,3,13,6],
     'circle-opacity':0.76,'circle-stroke-color':'#fff','circle-stroke-width':0.9
   }});
+  map.addSource('predictions',{type:'geojson',data:empty});
+  map.addLayer({id:'prediction-hexes',type:'fill',source:'predictions',layout:{visibility:'none'},paint:{
+    'fill-color':['case',['>=',['get','predicted_rsrp_dbm'],-85],'#117e72',['>=',['get','predicted_rsrp_dbm'],-105],'#3b9eae','#d79b57'],
+    'fill-opacity':['interpolate',['linear'],['get','uncertainty_db'],5,.8,20,.5,40,.25],
+    'fill-outline-color':'#244349'
+  }});
+  map.on('mouseenter','prediction-hexes',()=>{map.getCanvas().style.cursor='pointer'});
+  map.on('mouseleave','prediction-hexes',()=>{map.getCanvas().style.cursor='' });
   map.on('mouseenter','measured',()=>{map.getCanvas().style.cursor='pointer'});
   map.on('mouseleave','measured',()=>{map.getCanvas().style.cursor='' });
   mapReady=true;
+  if(predictionData)map.getSource('predictions').setData(predictionData);
   if(dataReady) void refresh();
 });
 map.on('click','measured',e=>{
@@ -38,6 +47,31 @@ map.on('click','measured',e=>{
   $('#detail-row').textContent=p.source_record_id || 'Not recorded';
   detail.hidden=false;
 });
+map.on('click','prediction-hexes',e=>{
+  if(view!=='predicted')return;
+  const p=e.features?.[0]?.properties;if(!p)return;
+  $('#prediction-value').textContent=Number(p.predicted_rsrp_dbm).toFixed(1);
+  $('#prediction-dot').className='dot '+(p.predicted_rsrp_dbm>=-85?'high':p.predicted_rsrp_dbm>=-105?'mid':'low');
+  $('#prediction-uncertainty').textContent=`Heuristic uncertainty ±${Number(p.uncertainty_db).toFixed(1)} dB · ${p.distance_m} m from closest route sample`;
+  $('#prediction-detail').hidden=false;
+});
+$('#prediction-close').addEventListener('click',()=>{$('#prediction-detail').hidden=true});
+function setView(next){
+  if(next==='predicted'&&!predictionData){notice.textContent='Prediction layer is loading or unavailable';return}
+  if(!mapReady)return
+  view=next;detail.hidden=true;$('#prediction-detail').hidden=true;
+  map.setLayoutProperty('measured','visibility',view==='measured'?'visible':'none');
+  map.setLayoutProperty('prediction-hexes','visibility',view==='predicted'?'visible':'none');
+  $('#measured-toolbar').hidden=view==='predicted';$('#measured-legend').hidden=view==='predicted';
+  $('#model-metrics').hidden=view==='measured';$('#prediction-legend').hidden=view==='measured';
+  $('#view-note').textContent=view==='measured'?'Real sampled signal readings, not coverage.':'Exploratory model, not measured coverage.';
+  for(const [id,selected] of [['view-measured',view==='measured'],['view-predicted',view==='predicted']]){$('#'+id).classList.toggle('selected',selected);$('#'+id).setAttribute('aria-pressed',String(selected))}
+  count.textContent=view==='predicted'?`${predictionData.features.length} predicted hexes · code C · NR/5G signal · route corridor only`:count.textContent;
+  if(view==='measured')void refresh().catch(showError);
+  map.resize();
+}
+$('#view-measured').addEventListener('click',()=>setView('measured'));
+$('#view-predicted').addEventListener('click',()=>setView('predicted'));
 $('#detail-close').addEventListener('click',()=>{detail.hidden=true});
 $('#detail-more').addEventListener('click',()=>{const opened=$('#detail-extra').hidden;$('#detail-extra').hidden=!opened;$('#detail-more').setAttribute('aria-expanded',String(opened));$('#detail-more').textContent=opened?'Hide details ⌃':'Source details ⌄'});
 $('#reset').addEventListener('click',()=>{
@@ -84,5 +118,12 @@ async function boot(){
   dataReady=true;
   notice.textContent=n?'Measured RF · DoNext H-Bahn · no inferred coverage':'No licensed observations loaded yet';
   await refresh();
+  try{
+    const [hexResponse,metricsResponse]=await Promise.all([fetch(new URL('./assets/predicted-rsrp.geojson',import.meta.url)),fetch(new URL('./assets/model-metrics.json',import.meta.url))]);
+    if(!hexResponse.ok||!metricsResponse.ok)throw new Error('Prediction assets unavailable');
+    predictionData=await hexResponse.json();predictionMetrics=await metricsResponse.json();
+    if(mapReady)map.getSource('predictions').setData(predictionData);
+    $('#model-score').textContent=`Holdout MAE ${predictionMetrics.holdout_mae_db} dB (${predictionMetrics.holdout_n.toLocaleString()} held-out points); spatial 5-fold CV MAE ${predictionMetrics.cv_weighted_mae_db} dB (folds: ${predictionMetrics.cv_folds.map(f=>f.mae_db).join(', ')} dB).`;
+  }catch(error){$('#view-predicted').disabled=true;console.warn('Model layer unavailable',error)}
 }
 boot().catch(showError);
