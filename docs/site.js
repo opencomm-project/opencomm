@@ -102,6 +102,7 @@ function setRegion(next){
   $('#measured-toolbar').hidden=next!=='germany'||view!=='measured';
   for(const [id,active] of [['measured',next==='germany'&&view==='measured'],['prediction-hexes',next==='germany'&&view==='predicted'],['center-halos',next==='germany'&&view==='centers'],['center-diamonds',next==='germany'&&view==='centers'],['israel-cells-layer',next==='israel']])map.setLayoutProperty(id,'visibility',active?'visible':'none');
   for(const [id,active] of [['measured-legend',next==='germany'&&view==='measured'],['prediction-legend',next==='germany'&&view==='predicted'],['center-legend',next==='germany'&&view==='centers'],['israel-legend',next==='israel'],['center-note',next==='germany'&&view==='centers'],['model-metrics',next==='germany'&&view==='predicted']])$('#'+id).hidden=!active;
+  $('#region-title').innerHTML=next==='israel'?'Cells, <em>not coverage.</em>':'Signal, <em>at a glance.</em>';
   $('#region-eyebrow').textContent=next==='israel'?'ISRAEL · INFERRED CELL INVENTORY':'DORTMUND · REAL RF MEASUREMENTS';
   $('#region-description').textContent=next==='israel'?'Estimated cell positions from OpenCellID, not measured RF, tower sites or coverage.':'One sampled rail route. Each dot is a measured signal reading, not a coverage prediction.';
   $('#total').textContent=next==='israel'?israelData.length.toLocaleString():observations.length.toLocaleString();
