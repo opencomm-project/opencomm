@@ -1,51 +1,61 @@
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.30.0/+esm';
 
-const notice = document.querySelector('#notice');
-const total = document.querySelector('#total');
-const count = document.querySelector('#map-count');
-const grade = document.querySelector('#grade');
-const country = document.querySelector('#country');
+const $ = selector => document.querySelector(selector);
+const notice = $('#notice');
+const total = $('#total');
+const count = $('#map-count');
+const detail = $('#detail');
+const chips = [...document.querySelectorAll('[data-band]')];
 const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/bright',center:[7.438,51.493],zoom:11});
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
-map.on('error', e => console.error('MapLibre tile/style error', e.error));
-window.opencommMap = map; // Public map only; makes rendering diagnostics inspectable.
-let conn;
-let mapReady = false;
-let requested = false;
-map.on('load', () => {
-  map.addSource('observations', {type:'geojson',data:{type:'FeatureCollection',features:[]}});
-  map.addLayer({id:'inventory',type:'circle',source:'observations',filter:['==',['get','knowledge_grade'],'inferred_inventory'],paint:{'circle-color':'#f3ba7e','circle-radius':6,'circle-stroke-color':'#09151c','circle-stroke-width':1}});
-  map.addLayer({id:'measured',type:'circle',source:'observations',filter:['==',['get','knowledge_grade'],'measured_rf'],paint:{'circle-color':'#a4f1c5','circle-radius':6,'circle-stroke-color':'#09151c','circle-stroke-width':1}});
-  mapReady = true;
-  if(requested) void refresh();
+map.on('error', e => console.error('MapLibre tile/style error',e.error));
+window.opencommMap = map; // Public map only; useful for inspecting rendering.
+let conn, mapReady=false, band='all', dataReady=false;
+const empty={type:'FeatureCollection',features:[]};
+map.on('load',()=>{
+  map.addSource('observations',{type:'geojson',data:empty});
+  map.addLayer({id:'measured',type:'circle',source:'observations',paint:{
+    'circle-color':['case',['>=',['get','rsrp_dbm'],-85],'#117e72',['>=',['get','rsrp_dbm'],-105],'#3b9eae','#d79b57'],
+    'circle-radius':['interpolate',['linear'],['zoom'],9,3,13,6],
+    'circle-opacity':0.76,'circle-stroke-color':'#fff','circle-stroke-width':0.9
+  }});
+  map.on('mouseenter','measured',()=>{map.getCanvas().style.cursor='pointer'});
+  map.on('mouseleave','measured',()=>{map.getCanvas().style.cursor='' });
+  mapReady=true;
+  if(dataReady) void refresh();
 });
-map.on('click', ['inventory','measured'], e => {
-  const f=e.features?.[0];
-  if(!f) return;
+map.on('click','measured',e=>{
+  const f=e.features?.[0]; if(!f)return;
   const p=f.properties;
-  const kind=p.knowledge_grade==='measured_rf'?'Measured RF':'Inferred inventory';
-  // Text content, not HTML: source labels come from external data.
-  const node=document.createElement('div');
-  node.textContent=`${kind} · ${p.source} · ${p.country_code} · RSRP ${p.rsrp_dbm} dBm · ${p.measured_at || 'time unavailable'}`;
-  new maplibregl.Popup().setLngLat(f.geometry.coordinates).setDOMContent(node).addTo(map);
+  $('#detail-value').textContent=Number(p.rsrp_dbm).toFixed(1);
+  $('#detail-time').textContent=p.measured_at || 'Not recorded';
+  $('#detail-radio').textContent=p.radio || 'Not recorded';
+  $('#detail-row').textContent=p.source_record_id || 'Not recorded';
+  detail.hidden=false;
 });
-const safe = value => value === 'all' ? null : value;
+$('#detail-close').addEventListener('click',()=>{detail.hidden=true});
+$('#reset').addEventListener('click',()=>{
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)map.jumpTo({center:[7.438,51.493],zoom:11});
+  else map.flyTo({center:[7.438,51.493],zoom:11,duration:850,essential:false});
+  detail.hidden=true;
+});
+for(const chip of chips)chip.addEventListener('click',()=>{
+  band=chip.dataset.band;
+  for(const button of chips){const active=button===chip;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active))}
+  detail.hidden=true;
+  void refresh().catch(showError);
+});
+function showError(error){notice.classList.add('error');notice.textContent='Could not read local data. Reload the page or try a modern browser.';console.error(error)}
 async function refresh(){
-  if (!conn || !mapReady) {requested=true;return;}
-  requested=false;
-  const g=safe(grade.value), c=safe(country.value);
-  // Values are from closed select menus; SQL parameter binding avoids interpolation.
-  const stmt=await conn.prepare(`SELECT source,knowledge_grade,country_code,lon,lat,rsrp_dbm,measured_at FROM observations
-    WHERE (?::VARCHAR IS NULL OR knowledge_grade=?) AND (?::VARCHAR IS NULL OR country_code=?)
-    AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 LIMIT 2000`);
-  let result;
-  try {result=await stmt.query(g,g,c,c)} finally {await stmt.close()}
+  if(!conn||!mapReady)return;
+  const predicate={all:'TRUE',high:'rsrp_dbm >= -85',mid:'rsrp_dbm >= -105 AND rsrp_dbm < -85',low:'rsrp_dbm < -105'}[band];
+  // band is selected only from this closed set; no external text enters SQL.
+  const result=await conn.query(`SELECT source,source_record_id,knowledge_grade,country_code,radio,lon,lat,rsrp_dbm,measured_at FROM observations WHERE ${predicate} AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 ORDER BY source_record_id LIMIT 2000`);
   const rows=result.toArray().map(row=>row.toJSON());
-  map.getSource('observations').setData({type:'FeatureCollection',features:rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,knowledge_grade:r.knowledge_grade,country_code:r.country_code,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at ? String(r.measured_at) : ''}}))});
-  count.textContent=rows.length===0?'No observations in this view':`${rows.length.toLocaleString()} plotted · up to 2,000 per view`;
+  const features=rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,source_record_id:r.source_record_id,knowledge_grade:r.knowledge_grade,country_code:r.country_code,radio:r.radio,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at?String(r.measured_at):''}}));
+  map.getSource('observations').setData({type:'FeatureCollection',features});
+  count.textContent=rows.length?`${rows.length.toLocaleString()} points shown · max 2,000`:'No points in this band';
 }
-for(const input of [grade,country]) input.addEventListener('change',()=>{refresh().catch(showError)});
-function showError(error){notice.classList.add('error');notice.textContent='Local query failed. Reload the page or try a modern browser. No network data was changed.';console.error(error)}
 async function boot(){
   const bundle=await duckdb.selectBundle(duckdb.getJsDelivrBundles());
   const workerURL=URL.createObjectURL(new Blob([`importScripts(${JSON.stringify(bundle.mainWorker)});`],{type:'text/javascript'}));
@@ -54,14 +64,15 @@ async function boot(){
   await db.instantiate(bundle.mainModule,bundle.pthreadWorker);
   URL.revokeObjectURL(workerURL);
   const response=await fetch(new URL('./assets/observations.parquet',import.meta.url));
-  if(!response.ok) throw new Error(`Parquet fetch HTTP ${response.status}`);
+  if(!response.ok)throw new Error(`Parquet fetch HTTP ${response.status}`);
   await db.registerFileBuffer('observations.parquet',new Uint8Array(await response.arrayBuffer()));
   conn=await db.connect();
   await conn.query("CREATE VIEW observations AS SELECT * FROM read_parquet('observations.parquet')");
   const result=await conn.query('SELECT count(*) AS n FROM observations');
   const n=Number(result.toArray()[0].n);
   total.textContent=n.toLocaleString();
-  notice.textContent=n===0?'No licensed observations loaded yet. The map is intentionally empty.':'Real TU Dortmund H-Bahn measurements (sampled). Click a point for source, measured RSRP and time. Not coverage.';
+  dataReady=true;
+  notice.textContent=n?'Measured RF · DoNext H-Bahn · no inferred coverage':'No licensed observations loaded yet';
   await refresh();
 }
 boot().catch(showError);

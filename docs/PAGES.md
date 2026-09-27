@@ -11,3 +11,7 @@ No UK Ofcom points have been loaded: Ofcom's general open-data policy is not pro
 ## SEO and map architecture
 
 The Pages branch has canonical URLs, descriptive meta tags, Open Graph, Dataset JSON-LD, sitemap/robots, `llms.txt`, a method page and a source-linked comparison page. Names of other services and operators are contextual comparisons, not claimed integrations or affiliations. MapLibre remains the base map using OpenFreeMap tiles with required attribution. Add deck.gl *as an overlay*, not a rewrite, if future dense OpenCellID extracts need hexbin/H3 aggregation; today's capped 2,000-point sample query does not require it.
+
+## Exploration UX
+
+The map-first explorer uses RSRP-band filters and a per-point source detail card. It does not interpolate coverage or compare operators. The filter vocabulary takes inspiration from nPerf's network/technology filters, CellMapper's point-level inspection, Opensignal and Ookla's place-first map affordances, and Ofcom's separation of signal/coverage/performance meaning. References and what did *not* carry over are in `docs/ux-research.md`. A capped 2,000 points is drawn per band for browser responsiveness; the headline count is the full published extract, not the plotted subset.
