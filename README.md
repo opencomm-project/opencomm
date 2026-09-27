@@ -21,3 +21,15 @@ DuckDB performs a pre-ingest quality profile from raw CSV and feeds canonical va
 The `/v1/cells` endpoint returns bounded point estimates, a source license, timestamps, and sample counts. `truncated=true` at limit means the answer is partial. Never interpret this as a complete tower inventory, radio coverage, or signal power.
 
 Source attribution: cell data from [OpenCellID](https://opencellid.org), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Any derivative data release needs appropriate attribution and ShareAlike treatment. See `docs/data-sources.md` and `docs/architecture.md` for limitations and future work. Code: Apache-2.0 (see LICENSE).
+
+## Offline country-export refresh
+
+`scripts/refresh_opencellid.py` takes an OpenCellID country GZIP already downloaded through your own authorized access. It does not fetch data or use your token. Pass the three-digit MCC and write a separate compact inferred-inventory JSON and a provenance manifest:
+
+```sh
+python3 scripts/refresh_opencellid.py data/your-country.csv.gz \
+  --mcc 232 --output data/austria-inventory.json \
+  --manifest data/austria-inventory-manifest.json --min-rows 100
+```
+
+Check the reported row counts, SHA256, source date, geographic fit and license before publishing either file. The script rejects malformed and mostly invalid snapshots and writes each file with an atomic replacement, but **the pair is not an atomic publication**. Keep staged outputs outside `docs/assets/`, then publish the validated data and manifest together. Country exports are estimated cell locations, not surveyed towers or RF coverage. Do not put a download token or raw export in Git. There is no automatic downloader or schedule.
