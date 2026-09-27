@@ -13,3 +13,7 @@ data/
 
 # Synthetic unit-test fixture; no real source export.
 !tests/fixtures/synthetic_cells.csv
+
+# Explicitly published empty schema file; raw data exports stay ignored.
+*.parquet
+!docs/assets/observations.parquet

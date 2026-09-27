@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Open cellular observations, labeled by evidence grade. A data-empty public prototype.">
+  <title>opencomm | evidence-first cellular observations</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="logo">o<span>·</span></span><span>opencomm</span></div><div class="branch">PUBLIC PROTOTYPE <span class="divider">/</span> STATIC EXPERIMENT</div><a class="repo" href="https://github.com/opencomm-project/opencomm/tree/pages-static">Source ↗</a></header>
+  <main>
+    <section class="intro"><div class="eyebrow">CELLULAR DATA, WITH PROVENANCE</div><h1>Know what the data<br><em>actually says.</em></h1><p>Explore open cellular observations by evidence grade. An estimated cell location is not a signal measurement, and neither is a coverage guarantee.</p></section>
+    <section class="workspace" aria-label="Observations explorer">
+      <aside class="sidebar">
+        <div class="section-heading"><div><span class="step">01 / EXPLORE</span><h2>Observations</h2></div><span class="live-dot" aria-hidden="true"></span></div>
+        <div class="stat"><strong id="total">0</strong><span>published observations</span></div>
+        <div class="notice" id="notice" role="status" aria-live="polite">Starting local query engine...</div>
+        <div class="rule"></div>
+        <label for="grade">EVIDENCE GRADE</label><select id="grade"><option value="all">All grades</option><option value="inferred_inventory">Inferred inventory</option><option value="measured_rf">Measured RF</option></select>
+        <label for="country">COUNTRY</label><select id="country"><option value="all">All countries</option><option value="IL">Israel · IL</option><option value="GB">United Kingdom · GB</option><option value="DE">Germany · DE</option></select>
+        <div class="rule"></div><div class="grade"><span class="badge inventory"></span><div><b>Inferred inventory</b><small>Estimated cell coordinates. No measured signal.</small></div></div><div class="grade"><span class="badge measured"></span><div><b>Measured RF</b><small>Signal or performance recorded at a place and time.</small></div></div>
+        <div class="sidebar-footer">Queries run in your browser with DuckDB-Wasm. No account, uploads or live API.</div>
+      </aside>
+      <div class="map-wrap"><div id="map" aria-label="Map of observations"></div><div class="map-label">MAP <span>·</span> OPEN OBSERVATIONS</div><div class="map-count" id="map-count">No observations in this view</div></div>
+    </section>
+    <section class="footnotes"><div><span class="step">02 / DATA STATUS</span><h2>Empty on purpose.</h2><p>No real OpenCellID export or measured RF dataset has been loaded yet. We do not display synthetic test points as real observations. The Parquet file has a typed schema and zero rows; importing licensed data is a separate, future step.</p></div><div><span class="step">03 / INTERPRETATION</span><h2>Keep the grades apart.</h2><p>Israel's planned OpenCellID inventory belongs to the <b>inferred</b> grade. UK Ofcom and German research measurements are separate potential <b>measured</b> sources, not Israeli coverage. Even measured points are samples, not a complete network map.</p></div></section>
+  </main>
+  <footer>opencomm <span>·</span> clean-room public-data prototype <span>·</span> <a href="https://github.com/opencomm-project/opencomm">Server prototype retained separately</a></footer>
+  <script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="./site.js"></script>
+</body>
+</html>
