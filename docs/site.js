@@ -29,7 +29,7 @@ map.on('click','measured',e=>{
   const p=f.properties;
   $('#detail-value').textContent=Number(p.rsrp_dbm).toFixed(1);
   $('#detail-dot').className='dot '+(p.rsrp_dbm>=-85?'high':p.rsrp_dbm>=-105?'mid':'low');
-  $('#detail-extra').hidden=true;$('#detail-more').setAttribute('aria-expanded','false');
+  $('#detail-extra').hidden=true;$('#detail-more').setAttribute('aria-expanded','false');$('#detail-more').textContent='Source details ⌄';
   $('#detail-time').textContent=p.measured_at || 'Not recorded';
   $('#detail-radio').textContent=p.radio || 'Not recorded';
   $('#detail-row').textContent=p.source_record_id || 'Not recorded';
