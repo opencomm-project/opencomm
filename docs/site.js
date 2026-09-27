@@ -5,7 +5,7 @@ const total = document.querySelector('#total');
 const count = document.querySelector('#map-count');
 const grade = document.querySelector('#grade');
 const country = document.querySelector('#country');
-const map = new maplibregl.Map({container:'map',style:'https://demotiles.maplibre.org/style.json',center:[7.438,51.493],zoom:11});
+const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/bright',center:[7.438,51.493],zoom:11});
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 let conn;
 let mapReady = false;

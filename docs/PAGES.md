@@ -10,4 +10,4 @@ No UK Ofcom points have been loaded: Ofcom's general open-data policy is not pro
 
 ## SEO and map architecture
 
-The Pages branch has canonical URLs, descriptive meta tags, Open Graph, Dataset JSON-LD, sitemap/robots, `llms.txt`, a method page and a source-linked comparison page. Names of other services and operators are contextual comparisons, not claimed integrations or affiliations. MapLibre remains the base map. Add deck.gl *as an overlay*, not a rewrite, if future dense OpenCellID extracts need hexbin/H3 aggregation; today's capped 2,000-point sample query does not require it.
+The Pages branch has canonical URLs, descriptive meta tags, Open Graph, Dataset JSON-LD, sitemap/robots, `llms.txt`, a method page and a source-linked comparison page. Names of other services and operators are contextual comparisons, not claimed integrations or affiliations. MapLibre remains the base map using OpenFreeMap tiles with required attribution. Add deck.gl *as an overlay*, not a rewrite, if future dense OpenCellID extracts need hexbin/H3 aggregation; today's capped 2,000-point sample query does not require it.
