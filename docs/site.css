@@ -25,3 +25,6 @@
 
 @media(max-width:650px){.map-stage-controls:has(~ .detail:not([hidden])){display:none}.map-shell{overflow:visible}.map-controls{z-index:10}.map-stage .maplibregl-ctrl-bottom-left,.map-stage .maplibregl-ctrl-bottom-right{bottom:4px}}
 @media(max-width:650px){.map-footer #israel-credit[hidden]{display:none}}
+
+#sector-credit[hidden],#sector-legend[hidden]{display:none}#sector-legend{background:#fff2f1f0;max-width:255px}#sector-legend a{pointer-events:auto}#sector-credit{font-size:10px;color:var(--soft)}
+@media(max-width:650px){.map-footer #sector-credit[hidden]{display:none}.map-footer #sector-credit{display:block}.view-switch .view-button{flex:none}}

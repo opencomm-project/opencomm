@@ -8,7 +8,7 @@ const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
-let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null, centerData=null, israelData=null, region='germany';
+let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null, centerData=null, sectorData=null, israelData=null, region='germany';
 const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
@@ -28,6 +28,8 @@ map.on('load',()=>{
   map.addLayer({id:'israel-cells-layer',type:'circle',source:'israel-cells',layout:{visibility:'none'},paint:{'circle-color':'#69459c','circle-radius':['interpolate',['linear'],['zoom'],6,3,11,5],'circle-opacity':.67,'circle-stroke-color':'#ffffff','circle-stroke-width':.7}});
   map.on('mouseenter','israel-cells-layer',()=>{map.getCanvas().style.cursor='pointer'});
   map.on('mouseleave','israel-cells-layer',()=>{map.getCanvas().style.cursor='' });
+  map.addSource('sector-paths',{type:'geojson',data:empty});
+  map.addLayer({id:'sector-path-layer',type:'line',source:'sector-paths',layout:{visibility:'none'},paint:{'line-color':'#b0465d','line-width':['interpolate',['linear'],['zoom'],10,1.5,13,3],'line-opacity':.72,'line-dasharray':[2,1]}});
   map.addSource('reception-centers',{type:'geojson',data:empty});
   map.addLayer({id:'center-halos',type:'circle',source:'reception-centers',layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,8,13,13],'circle-color':'#ffffff','circle-opacity':.9,'circle-stroke-color':'#5a3d80','circle-stroke-width':2}});
   map.addLayer({id:'center-diamonds',type:'symbol',source:'reception-centers',layout:{visibility:'none','text-field':'◇','text-size':22,'text-allow-overlap':true},paint:{'text-color':'#5a3d80'}});
@@ -40,6 +42,7 @@ map.on('load',()=>{
   mapReady=true;
   if(predictionData)map.getSource('predictions').setData(predictionData);
   if(centerData)map.getSource('reception-centers').setData(centerData);
+  if(sectorData)map.getSource('sector-paths').setData(sectorData);
   if(israelData)refreshIsrael();
   if(dataReady) void refresh();
 });
@@ -100,15 +103,16 @@ function setRegion(next){
   $('#area-israel').classList.toggle('selected',next==='israel');$('#area-israel').setAttribute('aria-pressed',String(next==='israel'));
   $('#germany-views').hidden=next==='israel';$('#israel-controls').hidden=next!=='israel';$('#israel-credit').hidden=next!=='israel';
   $('#measured-toolbar').hidden=next!=='germany'||view!=='measured';
-  for(const [id,active] of [['measured',next==='germany'&&view==='measured'],['prediction-hexes',next==='germany'&&view==='predicted'],['center-halos',next==='germany'&&view==='centers'],['center-diamonds',next==='germany'&&view==='centers'],['israel-cells-layer',next==='israel']])map.setLayoutProperty(id,'visibility',active?'visible':'none');
-  for(const [id,active] of [['measured-legend',next==='germany'&&view==='measured'],['prediction-legend',next==='germany'&&view==='predicted'],['center-legend',next==='germany'&&view==='centers'],['israel-legend',next==='israel'],['center-note',next==='germany'&&view==='centers'],['model-metrics',next==='germany'&&view==='predicted']])$('#'+id).hidden=!active;
+  for(const [id,active] of [['measured',next==='germany'&&view==='measured'],['prediction-hexes',next==='germany'&&view==='predicted'],['center-halos',next==='germany'&&view==='centers'],['center-diamonds',next==='germany'&&view==='centers'],['sector-path-layer',next==='germany'&&view==='sector'],['israel-cells-layer',next==='israel']])map.setLayoutProperty(id,'visibility',active?'visible':'none');
+  for(const [id,active] of [['measured-legend',next==='germany'&&view==='measured'],['prediction-legend',next==='germany'&&view==='predicted'],['center-legend',next==='germany'&&view==='centers'],['israel-legend',next==='israel'],['center-note',next==='germany'&&view==='centers'],['sector-legend',next==='germany'&&view==='sector'],['model-metrics',next==='germany'&&view==='predicted']])$('#'+id).hidden=!active;
   $('#region-title').innerHTML=next==='israel'?'Cells, <em>not coverage.</em>':'Signal, <em>at a glance.</em>';
   $('#region-eyebrow').textContent=next==='israel'?'ISRAEL · INFERRED CELL INVENTORY':'DORTMUND · REAL RF MEASUREMENTS';
   $('#region-description').textContent=next==='israel'?'Estimated cell positions from OpenCellID, not measured RF, tower sites or coverage.':'One sampled rail route. Each dot is a measured signal reading, not a coverage prediction.';
   $('#total').textContent=next==='israel'?israelData.length.toLocaleString():observations.length.toLocaleString();
   $('#total-label').textContent=next==='israel'?'source cell records':'source measurements';
   $('#map').setAttribute('aria-label',next==='israel'?'Map of inferred OpenCellID Israel cell positions, not measured signal or tower sites':'Map of sampled RF measurements along the Dortmund H-Bahn route');
-  $('#map-scope').textContent=next==='israel'?'Israel · inferred inventory':view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':'Dortmund · model prediction';
+  $('#sector-credit').hidden=next==='israel'||view!=='sector';
+  $('#map-scope').textContent=next==='israel'?'Israel · inferred inventory':view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':view==='sector'?'Dortmund · sector paths':'Dortmund · model prediction';
   if(next==='israel'){map.jumpTo({center:[34.92,31.8],zoom:7});refreshIsrael();notice.textContent='Inferred inventory · OpenCellID Israel · no measured RF'}
   else{map.jumpTo({center:[7.438,51.493],zoom:11});notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';setView(view)}
   map.resize();
@@ -129,25 +133,31 @@ $('#prediction-close').addEventListener('click',()=>{$('#prediction-detail').hid
 function setView(next){
   if(next==='predicted'&&!predictionData){notice.textContent='Prediction layer is loading or unavailable';return}
   if(next==='centers'&&!centerData){notice.textContent='Reception centers are loading or unavailable';return}
+  if(next==='sector'&&!sectorData){notice.textContent='Sector research paths are loading or unavailable';return}
   if(!mapReady)return;
   view=next;detail.hidden=true;$('#prediction-detail').hidden=true;$('#center-detail').hidden=true;
   map.setLayoutProperty('measured','visibility',view==='measured'?'visible':'none');
   map.setLayoutProperty('prediction-hexes','visibility',view==='predicted'?'visible':'none');
   for(const layer of ['center-halos','center-diamonds'])map.setLayoutProperty(layer,'visibility',view==='centers'?'visible':'none');
+  map.setLayoutProperty('sector-path-layer','visibility',view==='sector'?'visible':'none');
   $('#measured-toolbar').hidden=view!=='measured';$('#measured-legend').hidden=view!=='measured';
   $('#model-metrics').hidden=view!=='predicted';$('#prediction-legend').hidden=view!=='predicted';
   $('#center-note').hidden=view!=='centers';$('#center-legend').hidden=view!=='centers';
-  $('#view-note').textContent={measured:'Real sampled signal readings, not coverage.',predicted:'Exploratory model, not measured coverage.',centers:'Grouped receiver positions, not towers.'}[view];
-  for(const [id,selected] of [['view-measured',view==='measured'],['view-predicted',view==='predicted'],['view-centers',view==='centers']]){$('#'+id).classList.toggle('selected',selected);$('#'+id).setAttribute('aria-pressed',String(selected))}
+  $('#sector-legend').hidden=view!=='sector';$('#sector-credit').hidden=view!=='sector';
+  $('#view-note').textContent={measured:'Real sampled signal readings, not coverage.',predicted:'Exploratory model, not measured coverage.',centers:'Grouped receiver positions, not towers.',sector:'Directional route-path research, not coverage; clutter worsened pooled CV.'}[view];
+  for(const [id,selected] of [['view-measured',view==='measured'],['view-predicted',view==='predicted'],['view-centers',view==='centers'],['view-sector',view==='sector']]){$('#'+id).classList.toggle('selected',selected);$('#'+id).setAttribute('aria-pressed',String(selected))}
   if(view==='predicted')count.textContent=`${predictionData.features.length} predicted hexes · code C · NR/5G signal · route corridor only`;
+  if(view==='sector')count.textContent=`${sectorData.features.length} route-sector paths · not coverage · clutter CV 6.77 vs baseline 6.51 dB`;
   if(view==='centers')count.textContent=`${centerData.features.length} estimated reception centers · NOT towers`;
   if(view==='measured')refresh();
-  $('#map-scope').textContent=view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':'Dortmund · model prediction';
+  $('#map').setAttribute('aria-label',view==='sector'?'Dortmund route-bound sector research paths from receiver-derived centers to observed endpoints; not signal coverage':view==='centers'?'Map of estimated reception centers, not physical tower sites':view==='predicted'?'Map of route-adjacent model-predicted RF, not measured or validated coverage':'Map of sampled RF measurements along the Dortmund H-Bahn route');
+  $('#map-scope').textContent=view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':view==='sector'?'Dortmund · sector paths':'Dortmund · model prediction';
   map.resize();
 }
 $('#view-measured').addEventListener('click',()=>setView('measured'));
 $('#view-predicted').addEventListener('click',()=>setView('predicted'));
 $('#view-centers').addEventListener('click',()=>setView('centers'));
+$('#view-sector').addEventListener('click',()=>setView('sector'));
 $('#detail-close').addEventListener('click',()=>{detail.hidden=true});
 $('#detail-more').addEventListener('click',()=>{const opened=$('#detail-extra').hidden;$('#detail-extra').hidden=!opened;$('#detail-more').setAttribute('aria-expanded',String(opened));$('#detail-more').textContent=opened?'Hide details ⌃':'Source details ⌄'});
 $('#reset').addEventListener('click',()=>{
@@ -201,6 +211,12 @@ async function boot(){
     centerData=await response.json();
     if(mapReady)map.getSource('reception-centers').setData(centerData);
   }catch(error){$('#view-centers').disabled=true;console.warn('Reception centers unavailable',error)}
+  try{
+    const response=await fetch(new URL('./assets/sector-paths.geojson',import.meta.url));
+    if(!response.ok)throw new Error(`Sector paths HTTP ${response.status}`);
+    sectorData=await response.json();
+    if(mapReady)map.getSource('sector-paths').setData(sectorData);
+  }catch(error){$('#view-sector').disabled=true;console.warn('Sector research layer unavailable',error)}
   try{
     const [hexResponse,metricsResponse]=await Promise.all([fetch(new URL('./assets/predicted-rsrp.geojson',import.meta.url)),fetch(new URL('./assets/model-metrics.json',import.meta.url))]);
     if(!hexResponse.ok||!metricsResponse.ok)throw new Error('Prediction assets unavailable');

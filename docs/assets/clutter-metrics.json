@@ -1,0 +1,82 @@
+{
+  "scope": "DoNext H-Bahn anonymized MNO C NR SS-RSRP; center estimates from training-only measurements in each split",
+  "source_md5": "2319a9cefcd48839bf70a2198586fbb7",
+  "building_extract": "OSM Geofabrik Arnsberg 2026-09-26, ODbL 1.0",
+  "landcover": "ESA WorldCover 10m 2021 v200, CC BY 4.0",
+  "terrain": "Copernicus DEM GLO-30 DSM, free use with credit",
+  "split": "longitude-contiguous middle 20% untouched and five longitudinal blocks on the other 80%; both models same split and features; no off-route evaluation",
+  "max_path_m": 750,
+  "n_rows": 9455,
+  "n_final_paths": 60,
+  "results": [
+    {
+      "split": "cv_1",
+      "train_n": 6006,
+      "test_n": 1390,
+      "anchors": 15,
+      "test_anchor_count": 3,
+      "sector_distance_mae_db": 3.013,
+      "sector_clutter_mae_db": 2.515
+    },
+    {
+      "split": "cv_2",
+      "train_n": 5955,
+      "test_n": 218,
+      "anchors": 14,
+      "test_anchor_count": 7,
+      "sector_distance_mae_db": 16.796,
+      "sector_clutter_mae_db": 12.674
+    },
+    {
+      "split": "cv_3",
+      "train_n": 6031,
+      "test_n": 1500,
+      "anchors": 16,
+      "test_anchor_count": 11,
+      "sector_distance_mae_db": 8.49,
+      "sector_clutter_mae_db": 11.314
+    },
+    {
+      "split": "cv_4",
+      "train_n": 5955,
+      "test_n": 1457,
+      "anchors": 13,
+      "test_anchor_count": 7,
+      "sector_distance_mae_db": 6.588,
+      "sector_clutter_mae_db": 5.383
+    },
+    {
+      "split": "cv_5",
+      "train_n": 5530,
+      "test_n": 533,
+      "anchors": 15,
+      "test_anchor_count": 8,
+      "sector_distance_mae_db": 5.678,
+      "sector_clutter_mae_db": 6.434
+    },
+    {
+      "split": "contiguous_holdout",
+      "train_n": 7527,
+      "test_n": 1869,
+      "anchors": 16,
+      "test_anchor_count": 11,
+      "sector_distance_mae_db": 4.916,
+      "sector_clutter_mae_db": 4.306
+    }
+  ],
+  "caveats": "Reception centers are noisy receiver-derived anchors, not towers; same rail route and time-correlated samples. Building footprints have no heights and DSM is not bare-earth ground elevation. Feature paths and eight directional bins are diagnostics, not RF rays or service coverage. No off-route ground truth.",
+  "cross_validation": {
+    "evaluated_n": 5098,
+    "sector_distance_weighted_mae_db": 6.51,
+    "sector_clutter_weighted_mae_db": 6.77,
+    "folds_improved": 3
+  },
+  "status": "research_only_no_generalizable_gain",
+  "not_tested": "Off-route signal, actual tower positions, cell identity uniqueness and building heights",
+  "inputs_sha256": {
+    "osm_arnsberg_pbf": "903f2c6bef970d99646b1015465362fb380794b35a765368a1c81a6892af1675",
+    "osm_building_extract": "978bf1fbf60a0bc0f8cc25725cff54fa4e26583fd98c3aeca10571d1e1ee9be0",
+    "esa_worldcover_crop": "bce3747dfde83ceb876387ed0b90db8a1617efedb71bc27167b87e73220ac6a0",
+    "copernicus_dem_tile": "a95f0c7df24ca293ecea3a4a88224661d3c32790141aff0d247926c0acc0f54d"
+  }
+}
