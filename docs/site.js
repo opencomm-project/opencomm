@@ -8,7 +8,7 @@ const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
-let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null, centerData=null;
+let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null, centerData=null, israelData=null, region='germany';
 const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
@@ -24,6 +24,10 @@ map.on('load',()=>{
     'fill-opacity':['interpolate',['linear'],['get','uncertainty_db'],5,.8,20,.5,40,.25],
     'fill-outline-color':'#244349'
   }});
+  map.addSource('israel-cells',{type:'geojson',data:empty});
+  map.addLayer({id:'israel-cells-layer',type:'circle',source:'israel-cells',layout:{visibility:'none'},paint:{'circle-color':'#69459c','circle-radius':['interpolate',['linear'],['zoom'],6,3,11,5],'circle-opacity':.67,'circle-stroke-color':'#ffffff','circle-stroke-width':.7}});
+  map.on('mouseenter','israel-cells-layer',()=>{map.getCanvas().style.cursor='pointer'});
+  map.on('mouseleave','israel-cells-layer',()=>{map.getCanvas().style.cursor='' });
   map.addSource('reception-centers',{type:'geojson',data:empty});
   map.addLayer({id:'center-halos',type:'circle',source:'reception-centers',layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,8,13,13],'circle-color':'#ffffff','circle-opacity':.9,'circle-stroke-color':'#5a3d80','circle-stroke-width':2}});
   map.addLayer({id:'center-diamonds',type:'symbol',source:'reception-centers',layout:{visibility:'none','text-field':'◇','text-size':22,'text-allow-overlap':true},paint:{'text-color':'#5a3d80'}});
@@ -36,6 +40,7 @@ map.on('load',()=>{
   mapReady=true;
   if(predictionData)map.getSource('predictions').setData(predictionData);
   if(centerData)map.getSource('reception-centers').setData(centerData);
+  if(israelData)refreshIsrael();
   if(dataReady) void refresh();
 });
 map.on('click','measured',e=>{
@@ -52,7 +57,7 @@ map.on('click','measured',e=>{
   detail.hidden=false;
 });
 map.on('click','prediction-hexes',e=>{
-  if(view!=='predicted')return;
+  if(view!=='predicted'||region!=='germany')return;
   const p=e.features?.[0]?.properties;if(!p)return;
   $('#prediction-value').textContent=Number(p.predicted_rsrp_dbm).toFixed(1);
   $('#prediction-dot').className='dot '+(p.predicted_rsrp_dbm>=-85?'high':p.predicted_rsrp_dbm>=-105?'mid':'low');
@@ -60,7 +65,7 @@ map.on('click','prediction-hexes',e=>{
   $('#prediction-detail').hidden=false;
 });
 map.on('click','center-halos',e=>{
-  if(view!=='centers')return;
+  if(view!=='centers'||region!=='germany')return;
   const p=e.features?.[0]?.properties;if(!p)return;
   $('#center-count').textContent=Number(p.sample_count).toLocaleString();
   $('#center-mno').textContent=p.mno_code;
@@ -68,6 +73,42 @@ map.on('click','center-halos',e=>{
   $('#center-identifiers').textContent=`${p.physical_cellid} / ${p.earfcn}`;
   $('#center-detail').hidden=false;
 });
+map.on('click','israel-cells-layer',e=>{
+  if(region!=='israel')return;
+  const p=e.features?.[0]?.properties;if(!p)return;
+  $('#israel-detail-radio').textContent=p.radio;
+  $('#israel-detail-network').textContent=`425 / ${p.mnc}`;
+  $('#israel-detail-id').textContent=`${p.area} / ${p.cell}`;
+  $('#israel-detail-samples').textContent=Number(p.samples).toLocaleString();
+  $('#israel-detail').hidden=false;
+});
+$('#israel-close').addEventListener('click',()=>{$('#israel-detail').hidden=true});
+function refreshIsrael(){
+  if(!mapReady||!israelData)return;
+  const radio=$('#israel-radio').value,mnc=$('#israel-network').value;
+  const selected=israelData.filter(r=>(radio==='all'||r[2]===radio)&&(mnc==='all'||r[3]===mnc));
+  // Deterministic, bounded view from the full local inventory, not a claim that only 3,000 exist.
+  const step=Math.max(1,Math.ceil(selected.length/3000));
+  const sampled=selected.filter((_,i)=>i%step===0).slice(0,3000);
+  map.getSource('israel-cells').setData({type:'FeatureCollection',features:sampled.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r[0],r[1]]},properties:{knowledge_grade:'inferred_inventory',radio:r[2],mnc:r[3],area:r[4],cell:r[5],samples:r[6]}}))});
+  if(region==='israel')count.textContent=`${sampled.length.toLocaleString()} shown of ${selected.length.toLocaleString()} matching cells · ${israelData.length.toLocaleString()} total extract`;
+}
+function setRegion(next){
+  if(next==='israel'&&!israelData){notice.textContent='Israel inventory is loading or unavailable';return}
+  region=next;detail.hidden=true;$('#prediction-detail').hidden=true;$('#center-detail').hidden=true;$('#israel-detail').hidden=true;
+  $('#area-germany').classList.toggle('selected',next==='germany');$('#area-germany').setAttribute('aria-pressed',String(next==='germany'));
+  $('#area-israel').classList.toggle('selected',next==='israel');$('#area-israel').setAttribute('aria-pressed',String(next==='israel'));
+  $('#germany-views').hidden=next==='israel';$('#israel-controls').hidden=next!=='israel';$('#israel-credit').hidden=next!=='israel';
+  $('#measured-toolbar').hidden=next!=='germany'||view!=='measured';
+  for(const [id,active] of [['measured',next==='germany'&&view==='measured'],['prediction-hexes',next==='germany'&&view==='predicted'],['center-halos',next==='germany'&&view==='centers'],['center-diamonds',next==='germany'&&view==='centers'],['israel-cells-layer',next==='israel']])map.setLayoutProperty(id,'visibility',active?'visible':'none');
+  for(const [id,active] of [['measured-legend',next==='germany'&&view==='measured'],['prediction-legend',next==='germany'&&view==='predicted'],['center-legend',next==='germany'&&view==='centers'],['israel-legend',next==='israel'],['center-note',next==='germany'&&view==='centers'],['model-metrics',next==='germany'&&view==='predicted']])$('#'+id).hidden=!active;
+  if(next==='israel'){map.jumpTo({center:[34.92,31.8],zoom:7});refreshIsrael();notice.textContent='Inferred inventory · OpenCellID Israel · no measured RF'}
+  else{map.jumpTo({center:[7.438,51.493],zoom:11});notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';setView(view)}
+  map.resize();
+}
+$('#area-germany').addEventListener('click',()=>setRegion('germany'));
+$('#area-israel').addEventListener('click',()=>setRegion('israel'));
+for(const id of ['israel-radio','israel-network'])$('#'+id).addEventListener('change',()=>{$('#israel-detail').hidden=true;refreshIsrael()});
 $('#center-close').addEventListener('click',()=>{$('#center-detail').hidden=true});
 $('#prediction-close').addEventListener('click',()=>{$('#prediction-detail').hidden=true});
 function setView(next){
@@ -130,6 +171,14 @@ async function boot(){
   dataReady=true;
   notice.classList.remove('error');notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';
   refresh();
+  try{
+    const response=await fetch(new URL('./assets/israel-inventory.json',import.meta.url));
+    if(!response.ok)throw new Error(`Israel inventory HTTP ${response.status}`);
+    israelData=await response.json();
+    if(!Array.isArray(israelData)||israelData.length!==29567)throw new Error('Unexpected inventory extract length');
+    const codes=[...new Set(israelData.map(r=>r[3]))].sort((a,b)=>Number(a)-Number(b));
+    for(const code of codes){const option=document.createElement('option');option.value=code;option.textContent=`MNC ${code}`;$('#israel-network').append(option)}
+  }catch(error){$('#area-israel').disabled=true;console.warn('Israel inventory unavailable',error)}
   try{
     const response=await fetch(new URL('./assets/reception-centers.geojson',import.meta.url));
     if(!response.ok)throw new Error(`Centers HTTP ${response.status}`);
