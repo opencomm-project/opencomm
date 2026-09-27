@@ -1,0 +1,3 @@
+radio,mcc,net,area,cell,unit,lon,lat,range,samples,changeable,created,updated,averageSignal
+LTE,425,1,101,10001,1,34.7818,32.0853,700,5,1,1700000000,1750000000,0
+LTE,425,2,102,10002,2,35.2137,31.7683,1100,8,1,1700000000,1750001000,0

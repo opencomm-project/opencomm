@@ -10,3 +10,6 @@ data/
 .duckdb/
 *.duckdb
 *.wal
+
+# Synthetic unit-test fixture; no real source export.
+!tests/fixtures/synthetic_cells.csv
