@@ -102,12 +102,26 @@ function setRegion(next){
   $('#measured-toolbar').hidden=next!=='germany'||view!=='measured';
   for(const [id,active] of [['measured',next==='germany'&&view==='measured'],['prediction-hexes',next==='germany'&&view==='predicted'],['center-halos',next==='germany'&&view==='centers'],['center-diamonds',next==='germany'&&view==='centers'],['israel-cells-layer',next==='israel']])map.setLayoutProperty(id,'visibility',active?'visible':'none');
   for(const [id,active] of [['measured-legend',next==='germany'&&view==='measured'],['prediction-legend',next==='germany'&&view==='predicted'],['center-legend',next==='germany'&&view==='centers'],['israel-legend',next==='israel'],['center-note',next==='germany'&&view==='centers'],['model-metrics',next==='germany'&&view==='predicted']])$('#'+id).hidden=!active;
+  $('#region-eyebrow').textContent=next==='israel'?'ISRAEL · INFERRED CELL INVENTORY':'DORTMUND · REAL RF MEASUREMENTS';
+  $('#region-description').textContent=next==='israel'?'Estimated cell positions from OpenCellID, not measured RF, tower sites or coverage.':'One sampled rail route. Each dot is a measured signal reading, not a coverage prediction.';
+  $('#total').textContent=next==='israel'?israelData.length.toLocaleString():observations.length.toLocaleString();
+  $('#total-label').textContent=next==='israel'?'source cell records':'source measurements';
+  $('#map').setAttribute('aria-label',next==='israel'?'Map of inferred OpenCellID Israel cell positions, not measured signal or tower sites':'Map of sampled RF measurements along the Dortmund H-Bahn route');
+  $('#map-scope').textContent=next==='israel'?'Israel · inferred inventory':view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':'Dortmund · model prediction';
   if(next==='israel'){map.jumpTo({center:[34.92,31.8],zoom:7});refreshIsrael();notice.textContent='Inferred inventory · OpenCellID Israel · no measured RF'}
   else{map.jumpTo({center:[7.438,51.493],zoom:11});notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';setView(view)}
   map.resize();
 }
-$('#area-germany').addEventListener('click',()=>setRegion('germany'));
-$('#area-israel').addEventListener('click',()=>setRegion('israel'));
+function toggleControls(force){
+  const open=typeof force==='boolean'?force:!$('#map-controls').classList.contains('open');
+  $('#map-controls').classList.toggle('open',open);
+  $('#map-layer-toggle').setAttribute('aria-expanded',String(open));
+  $('#map-layer-toggle').textContent=open?'× Close controls':'☷ Layers & filters';
+  map.resize();
+}
+$('#map-layer-toggle').addEventListener('click',()=>toggleControls());
+$('#area-germany').addEventListener('click',()=>{setRegion('germany');toggleControls(false)});
+$('#area-israel').addEventListener('click',()=>{setRegion('israel');toggleControls(false)});
 for(const id of ['israel-radio','israel-network'])$('#'+id).addEventListener('change',()=>{$('#israel-detail').hidden=true;refreshIsrael()});
 $('#center-close').addEventListener('click',()=>{$('#center-detail').hidden=true});
 $('#prediction-close').addEventListener('click',()=>{$('#prediction-detail').hidden=true});
@@ -127,6 +141,7 @@ function setView(next){
   if(view==='predicted')count.textContent=`${predictionData.features.length} predicted hexes · code C · NR/5G signal · route corridor only`;
   if(view==='centers')count.textContent=`${centerData.features.length} estimated reception centers · NOT towers`;
   if(view==='measured')refresh();
+  $('#map-scope').textContent=view==='measured'?'Dortmund · measured RF':view==='centers'?'Dortmund · reception centers':'Dortmund · model prediction';
   map.resize();
 }
 $('#view-measured').addEventListener('click',()=>setView('measured'));
