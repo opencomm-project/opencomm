@@ -8,7 +8,7 @@ const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
-let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null;
+let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null, centerData=null;
 const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
@@ -24,12 +24,18 @@ map.on('load',()=>{
     'fill-opacity':['interpolate',['linear'],['get','uncertainty_db'],5,.8,20,.5,40,.25],
     'fill-outline-color':'#244349'
   }});
+  map.addSource('reception-centers',{type:'geojson',data:empty});
+  map.addLayer({id:'center-halos',type:'circle',source:'reception-centers',layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,8,13,13],'circle-color':'#ffffff','circle-opacity':.9,'circle-stroke-color':'#5a3d80','circle-stroke-width':2}});
+  map.addLayer({id:'center-diamonds',type:'symbol',source:'reception-centers',layout:{visibility:'none','text-field':'◇','text-size':22,'text-allow-overlap':true},paint:{'text-color':'#5a3d80'}});
+  map.on('mouseenter','center-halos',()=>{map.getCanvas().style.cursor='pointer'});
+  map.on('mouseleave','center-halos',()=>{map.getCanvas().style.cursor='' });
   map.on('mouseenter','prediction-hexes',()=>{map.getCanvas().style.cursor='pointer'});
   map.on('mouseleave','prediction-hexes',()=>{map.getCanvas().style.cursor='' });
   map.on('mouseenter','measured',()=>{map.getCanvas().style.cursor='pointer'});
   map.on('mouseleave','measured',()=>{map.getCanvas().style.cursor='' });
   mapReady=true;
   if(predictionData)map.getSource('predictions').setData(predictionData);
+  if(centerData)map.getSource('reception-centers').setData(centerData);
   if(dataReady) void refresh();
 });
 map.on('click','measured',e=>{
@@ -53,23 +59,38 @@ map.on('click','prediction-hexes',e=>{
   $('#prediction-uncertainty').textContent=`Heuristic uncertainty ±${Number(p.uncertainty_db).toFixed(1)} dB · ${p.distance_m} m from closest route sample`;
   $('#prediction-detail').hidden=false;
 });
+map.on('click','center-halos',e=>{
+  if(view!=='centers')return;
+  const p=e.features?.[0]?.properties;if(!p)return;
+  $('#center-count').textContent=Number(p.sample_count).toLocaleString();
+  $('#center-mno').textContent=p.mno_code;
+  $('#center-index').textContent=p.cell_index;
+  $('#center-identifiers').textContent=`${p.physical_cellid} / ${p.earfcn}`;
+  $('#center-detail').hidden=false;
+});
+$('#center-close').addEventListener('click',()=>{$('#center-detail').hidden=true});
 $('#prediction-close').addEventListener('click',()=>{$('#prediction-detail').hidden=true});
 function setView(next){
   if(next==='predicted'&&!predictionData){notice.textContent='Prediction layer is loading or unavailable';return}
-  if(!mapReady)return
-  view=next;detail.hidden=true;$('#prediction-detail').hidden=true;
+  if(next==='centers'&&!centerData){notice.textContent='Reception centers are loading or unavailable';return}
+  if(!mapReady)return;
+  view=next;detail.hidden=true;$('#prediction-detail').hidden=true;$('#center-detail').hidden=true;
   map.setLayoutProperty('measured','visibility',view==='measured'?'visible':'none');
   map.setLayoutProperty('prediction-hexes','visibility',view==='predicted'?'visible':'none');
-  $('#measured-toolbar').hidden=view==='predicted';$('#measured-legend').hidden=view==='predicted';
-  $('#model-metrics').hidden=view==='measured';$('#prediction-legend').hidden=view==='measured';
-  $('#view-note').textContent=view==='measured'?'Real sampled signal readings, not coverage.':'Exploratory model, not measured coverage.';
-  for(const [id,selected] of [['view-measured',view==='measured'],['view-predicted',view==='predicted']]){$('#'+id).classList.toggle('selected',selected);$('#'+id).setAttribute('aria-pressed',String(selected))}
-  count.textContent=view==='predicted'?`${predictionData.features.length} predicted hexes · code C · NR/5G signal · route corridor only`:count.textContent;
-  if(view==='measured')void refresh().catch(showError);
+  for(const layer of ['center-halos','center-diamonds'])map.setLayoutProperty(layer,'visibility',view==='centers'?'visible':'none');
+  $('#measured-toolbar').hidden=view!=='measured';$('#measured-legend').hidden=view!=='measured';
+  $('#model-metrics').hidden=view!=='predicted';$('#prediction-legend').hidden=view!=='predicted';
+  $('#center-note').hidden=view!=='centers';$('#center-legend').hidden=view!=='centers';
+  $('#view-note').textContent={measured:'Real sampled signal readings, not coverage.',predicted:'Exploratory model, not measured coverage.',centers:'Grouped receiver positions, not towers.'}[view];
+  for(const [id,selected] of [['view-measured',view==='measured'],['view-predicted',view==='predicted'],['view-centers',view==='centers']]){$('#'+id).classList.toggle('selected',selected);$('#'+id).setAttribute('aria-pressed',String(selected))}
+  if(view==='predicted')count.textContent=`${predictionData.features.length} predicted hexes · code C · NR/5G signal · route corridor only`;
+  if(view==='centers')count.textContent=`${centerData.features.length} estimated reception centers · NOT towers`;
+  if(view==='measured')refresh();
   map.resize();
 }
 $('#view-measured').addEventListener('click',()=>setView('measured'));
 $('#view-predicted').addEventListener('click',()=>setView('predicted'));
+$('#view-centers').addEventListener('click',()=>setView('centers'));
 $('#detail-close').addEventListener('click',()=>{detail.hidden=true});
 $('#detail-more').addEventListener('click',()=>{const opened=$('#detail-extra').hidden;$('#detail-extra').hidden=!opened;$('#detail-more').setAttribute('aria-expanded',String(opened));$('#detail-more').textContent=opened?'Hide details ⌃':'Source details ⌄'});
 $('#reset').addEventListener('click',()=>{
@@ -109,6 +130,12 @@ async function boot(){
   dataReady=true;
   notice.classList.remove('error');notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';
   refresh();
+  try{
+    const response=await fetch(new URL('./assets/reception-centers.geojson',import.meta.url));
+    if(!response.ok)throw new Error(`Centers HTTP ${response.status}`);
+    centerData=await response.json();
+    if(mapReady)map.getSource('reception-centers').setData(centerData);
+  }catch(error){$('#view-centers').disabled=true;console.warn('Reception centers unavailable',error)}
   try{
     const [hexResponse,metricsResponse]=await Promise.all([fetch(new URL('./assets/predicted-rsrp.geojson',import.meta.url)),fetch(new URL('./assets/model-metrics.json',import.meta.url))]);
     if(!hexResponse.ok||!metricsResponse.ok)throw new Error('Prediction assets unavailable');
