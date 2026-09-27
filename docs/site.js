@@ -7,6 +7,8 @@ const grade = document.querySelector('#grade');
 const country = document.querySelector('#country');
 const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/bright',center:[7.438,51.493],zoom:11});
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
+map.on('error', e => console.error('MapLibre tile/style error', e.error));
+window.opencommMap = map; // Public map only; makes rendering diagnostics inspectable.
 let conn;
 let mapReady = false;
 let requested = false;
