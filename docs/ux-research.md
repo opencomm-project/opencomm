@@ -11,3 +11,7 @@ The decision is to present a single sampled measured-RF story, not claim nationa
 | [Ofcom Map Your Mobile](https://www.ofcom.org.uk/mobile-coverage-checker) | Distinguishes coverage availability and performance in plain language. | Explain why observed RSRP points are neither comprehensive coverage nor performance. |
 
 The interface uses a restrained typographic hierarchy, whitespace, one primary action, a small number of filter choices, visible provenance, responsive cards and reduced-motion handling. These are broad design principles rather than a copy of any competitor or Apple's trade dress. Signal thresholds are display bins, **not** a quality guarantee. The bins are ≥−85, −105 to <−85, and <−105 dBm. They have no network/operator-specific interpretation. A map view draws up to 2,000 sampled records per bin; total is 10,148 rows in the extract. No measurement outside DoNext H-Bahn is represented.
+
+## Product-owner usability correction
+
+A user test found the first redesign still required scrolling to reach the map and reading too much to interpret a point. The current iteration puts the map immediately after a compact one-line orientation, within the first viewport on desktop and mobile. The static on-map RSRP legend explains the three color bins before any tap; tap gives one large measured dBm value, then a voluntary Source details disclosure. The bins are display categories only, never an RF-quality or coverage score. This correction supersedes the earlier large-hero layout.

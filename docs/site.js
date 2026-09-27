@@ -28,12 +28,15 @@ map.on('click','measured',e=>{
   const f=e.features?.[0]; if(!f)return;
   const p=f.properties;
   $('#detail-value').textContent=Number(p.rsrp_dbm).toFixed(1);
+  $('#detail-dot').className='dot '+(p.rsrp_dbm>=-85?'high':p.rsrp_dbm>=-105?'mid':'low');
+  $('#detail-extra').hidden=true;$('#detail-more').setAttribute('aria-expanded','false');
   $('#detail-time').textContent=p.measured_at || 'Not recorded';
   $('#detail-radio').textContent=p.radio || 'Not recorded';
   $('#detail-row').textContent=p.source_record_id || 'Not recorded';
   detail.hidden=false;
 });
 $('#detail-close').addEventListener('click',()=>{detail.hidden=true});
+$('#detail-more').addEventListener('click',()=>{const opened=$('#detail-extra').hidden;$('#detail-extra').hidden=!opened;$('#detail-more').setAttribute('aria-expanded',String(opened));$('#detail-more').textContent=opened?'Hide details ⌃':'Source details ⌄'});
 $('#reset').addEventListener('click',()=>{
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)map.jumpTo({center:[7.438,51.493],zoom:11});
   else map.flyTo({center:[7.438,51.493],zoom:11,duration:850,essential:false});
