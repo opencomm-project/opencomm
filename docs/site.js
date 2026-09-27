@@ -1,5 +1,3 @@
-import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.30.0/+esm';
-
 const $ = selector => document.querySelector(selector);
 const notice = $('#notice');
 const total = $('#total');
@@ -10,7 +8,7 @@ const map = new maplibregl.Map({container:'map',style:'https://tiles.openfreemap
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', e => console.error('MapLibre tile/style error',e.error));
 window.opencommMap = map; // Public map only; useful for inspecting rendering.
-let conn, mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null;
+let observations=[], mapReady=false, band='all', dataReady=false, view='measured', predictionData=null, predictionMetrics=null;
 const operatorFilter=$('#operator-filter'), technologyFilter=$('#technology-filter');
 const empty={type:'FeatureCollection',features:[]};
 map.on('load',()=>{
@@ -86,38 +84,31 @@ for(const chip of chips)chip.addEventListener('click',()=>{
   void refresh().catch(showError);
 });
 for(const selector of [operatorFilter,technologyFilter])selector.addEventListener('change',()=>{detail.hidden=true;void refresh().catch(showError)});
-function showError(error){notice.classList.add('error');notice.textContent='Could not read local data. Reload the page or try a modern browser.';console.error(error)}
-async function refresh(){
-  if(!conn||!mapReady)return;
-  const predicate={all:'TRUE',high:'rsrp_dbm >= -85',mid:'rsrp_dbm >= -105 AND rsrp_dbm < -85',low:'rsrp_dbm < -105'}[band];
-  // Every interpolated clause is selected from a closed set, never free-form input.
-  const operator={all:'TRUE',A:"operator_name = 'A'",B:"operator_name = 'B'",C:"operator_name = 'C'"}[operatorFilter.value];
-  const technology={all:'TRUE',nr:"radio = 'NR SS-RSRP (5G signal)'",lte:"radio = 'LTE RSRP (4G signal)'"}[technologyFilter.value];
-  const result=await conn.query(`SELECT source,source_record_id,knowledge_grade,country_code,radio,operator_name,network_label,lon,lat,rsrp_dbm,measured_at FROM observations WHERE ${predicate} AND ${operator} AND ${technology} AND lon BETWEEN -180 AND 180 AND lat BETWEEN -90 AND 90 ORDER BY source_record_id LIMIT 2000`);
-  const rows=result.toArray().map(row=>row.toJSON());
-  const features=rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},properties:{source:r.source,source_record_id:r.source_record_id,knowledge_grade:r.knowledge_grade,country_code:r.country_code,radio:r.radio,operator_name:r.operator_name,network_label:r.network_label,rsrp_dbm:r.rsrp_dbm,measured_at:r.measured_at?String(r.measured_at):''}}));
+function showError(error){notice.classList.add('error');notice.textContent='Measurement data is temporarily unavailable.';console.error('Measured data load/render failure:',error)}
+function refresh(){
+  if(!dataReady||!mapReady||view!=='measured')return;
+  const rows=[];
+  for(const r of observations){
+    if(operatorFilter.value!=='all'&&r[1]!==operatorFilter.value)continue;
+    if(technologyFilter.value==='nr'&&!r[2].startsWith('NR '))continue;
+    if(technologyFilter.value==='lte'&&!r[2].startsWith('LTE '))continue;
+    if(band==='high'&&r[6]<-85||band==='mid'&&(r[6]<-105||r[6]>=-85)||band==='low'&&r[6]>=-105)continue;
+    rows.push(r);if(rows.length>=2000)break;
+  }
+  const features=rows.map(r=>({type:'Feature',geometry:{type:'Point',coordinates:[r[4],r[5]]},properties:{source_record_id:r[0],operator_name:r[1],radio:r[2],network_label:r[3],rsrp_dbm:r[6],measured_at:r[7]}}));
   map.getSource('observations').setData({type:'FeatureCollection',features});
   const label=[operatorFilter.value==='all'?'all operator codes':`code ${operatorFilter.value}`,technologyFilter.value==='all'?'all signal types':technologyFilter.value==='nr'?'NR / 5G':'LTE / 4G'].join(' · ');
   count.textContent=rows.length?`${rows.length.toLocaleString()} points shown · ${label}${rows.length===2000?' · capped at 2,000':''}`:`No points · ${label}`;
 }
 async function boot(){
-  const bundle=await duckdb.selectBundle(duckdb.getJsDelivrBundles());
-  const workerURL=URL.createObjectURL(new Blob([`importScripts(${JSON.stringify(bundle.mainWorker)});`],{type:'text/javascript'}));
-  const worker=new Worker(workerURL);
-  const db=new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(),worker);
-  await db.instantiate(bundle.mainModule,bundle.pthreadWorker);
-  URL.revokeObjectURL(workerURL);
-  const response=await fetch(new URL('./assets/observations.parquet',import.meta.url));
-  if(!response.ok)throw new Error(`Parquet fetch HTTP ${response.status}`);
-  await db.registerFileBuffer('observations.parquet',new Uint8Array(await response.arrayBuffer()));
-  conn=await db.connect();
-  await conn.query("CREATE VIEW observations AS SELECT * FROM read_parquet('observations.parquet')");
-  const result=await conn.query('SELECT count(*) AS n FROM observations');
-  const n=Number(result.toArray()[0].n);
-  total.textContent=n.toLocaleString();
+  const response=await fetch(new URL('./assets/observations.json',import.meta.url));
+  if(!response.ok)throw new Error(`JSON fetch HTTP ${response.status}`);
+  observations=await response.json();
+  if(!Array.isArray(observations)||observations.length!==10148)throw new Error('Unexpected observation extract length');
+  total.textContent=observations.length.toLocaleString();
   dataReady=true;
-  notice.textContent=n?'Measured RF · DoNext H-Bahn · no inferred coverage':'No licensed observations loaded yet';
-  await refresh();
+  notice.classList.remove('error');notice.textContent='Measured RF · DoNext H-Bahn · no inferred coverage';
+  refresh();
   try{
     const [hexResponse,metricsResponse]=await Promise.all([fetch(new URL('./assets/predicted-rsrp.geojson',import.meta.url)),fetch(new URL('./assets/model-metrics.json',import.meta.url))]);
     if(!hexResponse.ok||!metricsResponse.ok)throw new Error('Prediction assets unavailable');
