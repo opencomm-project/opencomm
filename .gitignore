@@ -6,3 +6,7 @@ __pycache__/
 data/
 *.csv
 *.csv.gz
+*.egg-info/
+.duckdb/
+*.duckdb
+*.wal

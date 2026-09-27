@@ -1,13 +1,12 @@
 """Explicit one-shot ingest: a local OpenCellID CSV."""
 import argparse
-import csv
 import gzip
 import hashlib
-import io
 import os
 from pathlib import Path
 import sys
 import psycopg
+from services.ingest.analysis import quality_profile, iter_rows
 from packages.geo.cell import parse_cell
 
 UPSERT = """INSERT INTO cells (radio,mcc,mnc,area,cell,location,estimated_range_m,samples,first_seen,last_seen)
@@ -27,15 +26,14 @@ def ingest(data: bytes, country_mcc: int, dsn: str, source: str = "OpenCellID") 
     digest = hashlib.sha256(data).hexdigest()
     payload = gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
     accepted = rejected = 0
-    reader = csv.DictReader(io.StringIO(payload.decode("utf-8-sig"), newline=""))
-    if not reader.fieldnames or not {"radio","mcc","net","area","cell","lon","lat","samples"}.issubset(reader.fieldnames):
-        raise ValueError("Unexpected OpenCellID CSV schema")
+    profile = quality_profile(payload, country_mcc)
+    print(f"DuckDB quality profile: {profile}")
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM ingest_runs WHERE source=%s AND source_sha256=%s", (source,digest))
             if cur.fetchone():
                 return 0,0
-            for lineno, row in enumerate(reader, start=2):
+            for lineno, row in enumerate(iter_rows(payload), start=2):
                 try:
                     cell = parse_cell(row, country_mcc)
                     if cell is None:

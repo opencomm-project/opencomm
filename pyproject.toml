@@ -3,7 +3,7 @@ name = "opencomm"
 version = "0.1.0"
 description = "Clean-room, public-data cellular infrastructure observability prototype"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "psycopg[binary]>=3.2,<4", "h3>=4.1,<5"]
+dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "psycopg[binary]>=3.2,<4", "duckdb>=1.1,<2"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
 [tool.pytest.ini_options]

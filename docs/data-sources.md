@@ -9,3 +9,5 @@ Ofcom UK road drive-test 4G/5G signal-strength releases, measured annually throu
 Vienna 4G/5G measured scanner and UE drive-test dataset, CC BY 4.0, a research snapshot, not an updating feed. https://zenodo.org/records/18338399
 
 Mozilla Location Service retired in 2024; not a viable input. https://github.com/mozilla/ichnaea/issues/2065
+
+TU Dortmund DoNext: CC BY 4.0, georeferenced 4G/5G mobile measurements with latency and throughput, version 2 in 2026; research snapshot, not continuous feed. https://data.tu-dortmund.de/dataset.xhtml?persistentId=doi%3A10.17877%2FTUDODATA-2026-T6MYPO
